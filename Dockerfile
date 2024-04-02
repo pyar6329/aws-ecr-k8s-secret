@@ -15,7 +15,7 @@ RUN set -x && \
     ca-certificates && \
   curl -sL -o /usr/local/bin/kubectl "https://storage.googleapis.com/kubernetes-release/release/v${KUBECTL_VERSION}/bin/linux/amd64/kubectl" && \
   chmod +x /usr/local/bin/kubectl && \
-  apk .build-base
+  apk del .build-base
 
 # install aws-cli
 RUN set -x && \

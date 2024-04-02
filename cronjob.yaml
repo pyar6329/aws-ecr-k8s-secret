@@ -1,0 +1,73 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: ecr-rotation
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: ecr-credential
+  namespace: ecr-rotation
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: ecr-credential
+rules:
+- apiGroups: [""]
+  resources: ["secrets"]
+  verbs: ["create", "updated", "delete"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: ecr-credential
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: ecr-credential
+subjects:
+- kind: ServiceAccount
+  name: ecr-credential
+  namespace: ecr-rotation
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: ecr-credential
+  namespace: ecr-rotation
+  labels:
+    app: ecr-credential
+type: Opaque
+stringData:
+  AWS_ACCESS_KEY_ID: ""
+  AWS_SECRET_ACCESS_KEY: ""
+  AWS_ACCOUNT_ID: ""
+  AWS_DEFAULT_REGION: "us-east-1"
+  SECRET_NAME: ecr-credential
+  SECRET_NAMESPACE: default
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: ecr-credential
+  namespace: ecr-rotation
+spec:
+  timeZone: "Etc/UTC"
+  schedule: "* */10 * * *" # credential was rotated per 10 hours
+  concurrencyPolicy: Forbid # concurrency run command is skipped
+  jobTemplate:
+    spec:
+      backoffLimit: 3 # retry number
+      template:
+        spec:
+          restartPolicy: OnFailure
+          activeDeadlineSeconds: 300 # suspend Pods after 5 minutes
+          serviceAccount: ecr-credential
+          containers:
+          - name: ecr-credential
+            image: ghcr.io/pyar6329/k8s-ecr-rotation:1.0.0
+            imagePullPolicy: IfNotPresent
+            envFrom:
+            - secretRef:
+                name: ecr-credential
