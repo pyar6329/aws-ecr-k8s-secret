@@ -8,7 +8,8 @@ kubectl apply -f ${SCRIPT_DIR}/cronjob.yaml
 
 kubectl create secret generic \
   -n ecr-rotation \
-  --dry-run=client ecr-credential \
+  --dry-run=client \
+  ecr-credential \
   --from-literal=AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID} \
   --from-literal=AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY} \
   --from-literal=AWS_ACCOUNT_ID=${AWS_ACCOUNT_ID} \
@@ -19,3 +20,6 @@ kubectl create secret generic \
 kubectl label secret -n ecr-rotation ecr-credential "app=ecr-credential"
 
 kubectl patch serviceaccount ${SECRET_NAMESPACE:-default} -p '{"imagePullSecrets": [{"name": "ecr-credential"}]}'
+
+# cronjob was run at first immediately
+kubectl create job ecr-rotation-first-run --from=cronjob/ecr-credential -n ecr-rotation
